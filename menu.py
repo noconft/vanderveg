@@ -3,6 +3,7 @@ from io import BytesIO
 from PIL import Image
 import easyocr
 import re
+from bs4 import BeautifulSoup
 
 def scrape_menu_image(image_url):
     """Download image from URL and extract text using EasyOCR."""
@@ -59,10 +60,32 @@ def clean_menu_text(raw_text):
     
     return menu
 
+def get_latest_menu_image_url():
+    """
+    Scrape the vanderveg.si homepage for the latest menu image URL.
+    Returns the absolute URL to the menu image.
+    """
+    homepage = "https://vanderveg.si"
+    resp = requests.get(homepage)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    # Find all image tags
+    imgs = soup.find_all("img")
+    # Look for an image with 'meni' in the src and ending with .jpg or .jpeg
+    for img in imgs:
+        src = img.get("src", "")
+        if "meni" in src and src.endswith(('.jpg', '.jpeg')):
+            # Make absolute URL if needed
+            if src.startswith("http"):
+                return src
+            else:
+                return homepage + src if src.startswith("/") else homepage + "/" + src
+    raise Exception("Menu image not found on homepage.")
 
 if __name__ == "__main__":
-    url = "https://vanderveg.si/wp-content/uploads/2025/06/meni0206.jpg"
-    menu_text = scrape_menu_image(url)
+    menu_image_url = get_latest_menu_image_url()
+    print(f"Menu image URL: {menu_image_url}")
+    menu_text = scrape_menu_image(menu_image_url)
     print("Extracted menu text:")
     print(menu_text)
     print("\n--- Cleaned Menu ---\n")
