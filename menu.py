@@ -85,6 +85,33 @@ def clean_menu_text(raw_text: str) -> Dict[str, List[str]]:
     process_buffer()
     return menu
 
+def get_prices():
+    """
+    Scrape prices for main dish and soup from vanderveg.si
+    
+    Returns:
+        tuple: (main_dish_price, soup_price) as strings, or (None, None) if not found
+    """
+    try:
+        homepage = "https://vanderveg.si"
+        resp = requests.get(homepage)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        text = soup.get_text()
+        
+        soup_match = re.search(r'Dnevna juha:\s*(\d+[,\.]\d+€)', text)
+        soup_price = soup_match.group(1) if soup_match else None
+        main_dish_match = re.search(r'Dnevna glavna jed:\s*(\d+[,\.]\d+€)', text)
+        main_dish_price = main_dish_match.group(1) if main_dish_match else None
+        
+        return soup_price, main_dish_price
+        
+    except requests.RequestException as e:
+        print(f"Error fetching website: {e}")
+        return None, None
+    except Exception as e:
+        print(f"Error parsing prices: {e}")
+        return None, None
 
 if __name__ == "__main__":
     try:
@@ -92,14 +119,15 @@ if __name__ == "__main__":
         logging.info(f"Menu image URL: {menu_image_url}")
         reader = easyocr.Reader(['sl'], gpu=False, verbose=False)
         menu_text = scrape_menu_image(menu_image_url, reader)
+        prices = get_prices()
         print("Extracted menu text:")
         print(menu_text)
         print("\n--- Cleaned Menu ---\n")
         menu = clean_menu_text(menu_text)
         for day, dishes in menu.items():
             print(day)
-            print("Juha:", dishes[0])
-            print("Glavna jed:", dishes[1])
+            print("Juha:", dishes[0], prices[0])
+            print("Glavna jed:", dishes[1], prices [1])
             print()
     except Exception as e:
         logging.error(f"Error: {e}")
